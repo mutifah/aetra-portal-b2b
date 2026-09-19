@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aetra B2B Customer Portal</title>
+    <!-- Import Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Import Supabase JS SDK -->
@@ -70,7 +71,6 @@
                                         <th>Status</th>
                                     </tr>
                                 </thead>
-                                <!-- ID ini penting agar JS bisa mengisi datanya di sini -->
                                 <tbody id="ticketTableBody">
                                     <tr>
                                         <td colspan="4" class="text-center text-muted">Memuat data dari database...</td>
@@ -87,14 +87,16 @@
     <!-- Skrip Logika Integrasi Supabase -->
     <script>
         // 1. Inisialisasi Koneksi Supabase
+        // GANTI DUA BARIS DI BAWAH INI DENGAN DATA DARI SUPABASE KAMU
         const SUPABASE_URL = 'https://tstnlgydftuoyujwtuth.supabase.co'; 
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzdG5sZ3lkZnR1b3l1and0dXRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3ODkxNjUsImV4cCI6MjEwNTM2NTE2NX0.4QxkFTuWOcrTihTUZaXUc24urUSkxrW4oIb_zX-URoA'; 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // Menggunakan nama variabel supabaseClient agar tidak bentrok dengan library bawaan
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // 2. Fungsi untuk mengambil data tiket dari database
         async function fetchTickets() {
-            // Tarik semua data dari tabel 'tickets', urutkan dari yang terbaru
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('tickets')
                 .select('*')
                 .order('created_at', { ascending: false });
@@ -114,7 +116,6 @@
 
             // Loop setiap baris data dan masukkan ke tabel HTML
             data.forEach(ticket => {
-                // Ubah format tanggal jadi format lokal Indonesia
                 const dateObj = new Date(ticket.created_at);
                 const dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -124,7 +125,6 @@
                 if(ticket.status === 'In Progress') badgeClass = 'bg-warning text-dark';
                 if(ticket.status === 'Resolved') badgeClass = 'bg-success';
 
-                // Buat elemen baris tabel baru
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>#TKT-${ticket.id}</td>
@@ -149,11 +149,10 @@
             btnSubmit.disabled = true;
 
             // Kirim data ke tabel Supabase
-            const { data, error } = await supabase
+            const { data, error } = await supabaseClient
                 .from('tickets')
                 .insert([
                     { kategori: kategoriVal, deskripsi: deskripsiVal }
-                    // Kolom id, created_at, dan status akan otomatis diisi oleh Supabase
                 ]);
 
             // Kembalikan tombol seperti semula
@@ -172,6 +171,8 @@
         // 4. Jalankan fungsi ambil data saat halaman pertama kali dibuka
         fetchTickets();
     </script>
+    
+    <!-- Import Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
