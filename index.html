@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aetra B2B Customer Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Import Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-light">
+
+    <!-- Navigasi Atas -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">Aetra Key Account Portal</a>
+            <div class="d-flex text-white align-items-center">
+                <span>PT. Industri Manufaktur Sukses (ID: 882910)</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Info Gangguan (Mockup) -->
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>⚠️ Info Gangguan:</strong> Terjadi kebocoran pipa utama di area Daan Mogot. Estimasi perbaikan selesai pada 15:00 WIB.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <div class="row">
+            <!-- Form Buat Tiket -->
+            <div class="col-md-5 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">Buat Tiket Laporan</div>
+                    <div class="card-body">
+                        <form id="ticketForm">
+                            <div class="mb-3">
+                                <label class="form-label">Kategori Laporan</label>
+                                <select class="form-select" id="kategori" required>
+                                    <option value="">Pilih Kategori...</option>
+                                    <option value="Gangguan Suplai / Tekanan Air">Gangguan Suplai / Tekanan Air</option>
+                                    <option value="Kualitas Air">Kualitas Air</option>
+                                    <option value="Tagihan / E-Billing">Tagihan / E-Billing</option>
+                                    <option value="Lainnya">Lainnya</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Deskripsi Kendala</label>
+                                <textarea class="form-control" id="deskripsi" rows="3" placeholder="Jelaskan detail kendala..." required></textarea>
+                            </div>
+                            <button type="submit" id="btnSubmit" class="btn btn-primary w-100">Kirim Tiket Laporan</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabel Riwayat Laporan Dinamis -->
+            <div class="col-md-7">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">Riwayat Laporan Anda</div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Tanggal</th>
+                                        <th>Kategori</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <!-- ID ini penting agar JS bisa mengisi datanya di sini -->
+                                <tbody id="ticketTableBody">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">Memuat data dari database...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Skrip Logika Integrasi Supabase -->
+    <script>
+        // 1. Inisialisasi Koneksi Supabase
+        const SUPABASE_URL = 'https://tstnlgydftuoyujwtuth.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzdG5sZ3lkZnR1b3l1and0dXRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3ODkxNjUsImV4cCI6MjEwNTM2NTE2NX0.4QxkFTuWOcrTihTUZaXUc24urUSkxrW4oIb_zX-URoA'; 
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // 2. Fungsi untuk mengambil data tiket dari database
+        async function fetchTickets() {
+            // Tarik semua data dari tabel 'tickets', urutkan dari yang terbaru
+            const { data, error } = await supabase
+                .from('tickets')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Gagal mengambil data:", error);
+                return;
+            }
+
+            const tbody = document.getElementById('ticketTableBody');
+            tbody.innerHTML = ''; // Bersihkan tulisan "Memuat data..."
+
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">Belum ada tiket laporan.</td></tr>';
+                return;
+            }
+
+            // Loop setiap baris data dan masukkan ke tabel HTML
+            data.forEach(ticket => {
+                // Ubah format tanggal jadi format lokal Indonesia
+                const dateObj = new Date(ticket.created_at);
+                const dateStr = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                // Tentukan warna badge berdasarkan status
+                let badgeClass = 'bg-secondary';
+                if(ticket.status === 'Open') badgeClass = 'bg-primary';
+                if(ticket.status === 'In Progress') badgeClass = 'bg-warning text-dark';
+                if(ticket.status === 'Resolved') badgeClass = 'bg-success';
+
+                // Buat elemen baris tabel baru
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>#TKT-${ticket.id}</td>
+                    <td>${dateStr}</td>
+                    <td>${ticket.kategori}</td>
+                    <td><span class="badge ${badgeClass}">${ticket.status}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 3. Fungsi saat tombol "Kirim Tiket Laporan" diklik
+        document.getElementById('ticketForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Mencegah halaman refresh
+
+            const kategoriVal = document.getElementById('kategori').value;
+            const deskripsiVal = document.getElementById('deskripsi').value;
+            const btnSubmit = document.getElementById('btnSubmit');
+
+            // Ubah tombol jadi status loading
+            btnSubmit.innerHTML = 'Mengirim...';
+            btnSubmit.disabled = true;
+
+            // Kirim data ke tabel Supabase
+            const { data, error } = await supabase
+                .from('tickets')
+                .insert([
+                    { kategori: kategoriVal, deskripsi: deskripsiVal }
+                    // Kolom id, created_at, dan status akan otomatis diisi oleh Supabase
+                ]);
+
+            // Kembalikan tombol seperti semula
+            btnSubmit.innerHTML = 'Kirim Tiket Laporan';
+            btnSubmit.disabled = false;
+
+            if (error) {
+                alert("Terjadi kesalahan: " + error.message);
+            } else {
+                alert("Tiket berhasil dibuat!");
+                document.getElementById('ticketForm').reset(); // Kosongkan form
+                fetchTickets(); // Refresh data tabel secara instan
+            }
+        });
+
+        // 4. Jalankan fungsi ambil data saat halaman pertama kali dibuka
+        fetchTickets();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
